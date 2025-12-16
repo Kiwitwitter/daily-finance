@@ -260,7 +260,7 @@ Cloudflare Edge Server
    - 在 Tunnel 配置页面，添加 Public Hostname
    - Subdomain: `finance`（或你喜欢的名称）
    - Domain: 选择你的域名
-   - Service: `http://web:8000`
+   - Service: `http://localhost:8000`
 
 5. **启动服务**
    ```bash
