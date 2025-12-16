@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% from "base.html" import stock_with_tooltip %}
+
+{% block title %}盘前市场汇总 - {{ date }}{% endblock %}
+
+{% block content %}
+<div class="report-header">
+    <h2>盘前市场汇总</h2>
+    <div class="report-date">{{ date }}</div>
+</div>
+
+<div class="report-grid">
+    <!-- 今日财经日历 -->
+    <section class="card">
+        <h3 class="card-title">
+            <span class="icon">📅</span>
+            今日财经日历
+        </h3>
+        <div class="card-content">
+            {% if calendar_events %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>事件</th>
+                        <th>预期</th>
+                        <th>前值</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in calendar_events %}
+                    <tr>
+                        <td class="time">{{ event.time }}</td>
+                        <td>{{ event.event }}</td>
+                        <td>{{ event.estimate or '-' }}</td>
+                        <td>{{ event.prev or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="no-data">今日无重要经济数据发布</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- 今日重点财报 -->
+    <section class="card">
+        <h3 class="card-title">
+            <span class="icon">📊</span>
+            今日重点财报
+        </h3>
+        <div class="card-content">
+            {% if earnings %}
+            <div class="earnings-section">
+                {% if earnings.before_market %}
+                <div class="earnings-group">
+                    <h4>盘前发布</h4>
+                    <div class="earnings-list">
+                        {% for e in earnings.before_market %}
+                        <span class="earnings-tag">{{ stock_with_tooltip(e.symbol, stock_info) }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% if earnings.after_market %}
+                <div class="earnings-group">
+                    <h4>盘后发布</h4>
+                    <div class="earnings-list">
+                        {% for e in earnings.after_market %}
+                        <span class="earnings-tag">{{ stock_with_tooltip(e.symbol, stock_info) }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <p class="no-data">今日无重要财报发布</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- 投行目标价调整 -->
+    <section class="card">
+        <h3 class="card-title">
+            <span class="icon">🎯</span>
+            投行目标价调整
+        </h3>
+        <div class="card-content">
+            {% if rating_changes %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>股票</th>
+                        <th>投行</th>
+                        <th>评级</th>
+                        <th>目标价</th>
+                        <th>潜在涨幅</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rating_changes %}
+                    <tr>
+                        <td>{{ stock_with_tooltip(r.symbol, stock_info) }}</td>
+                        <td>{{ r.company }}</td>
+                        <td class="action {{ 'upgrade' if r.action == 'up' else 'downgrade' if r.action == 'down' else '' }}">
+                            {{ r.to_grade }}
+                        </td>
+                        <td>${{ "%.0f"|format(r.target_mean) if r.target_mean else '-' }}</td>
+                        <td class="{{ 'upgrade' if r.upside_pct and r.upside_pct > 0 else 'downgrade' if r.upside_pct and r.upside_pct < 0 else '' }}">
+                            {{ "+%.1f%%"|format(r.upside_pct) if r.upside_pct and r.upside_pct > 0 else "%.1f%%"|format(r.upside_pct) if r.upside_pct else '-' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="no-data">暂无最新评级变化</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- 今日核心市场新闻 -->
+    <section class="card full-width">
+        <h3 class="card-title">
+            <span class="icon">📰</span>
+            今日核心市场新闻
+        </h3>
+        <div class="card-content">
+            {% if core_news %}
+            <ol class="news-list">
+                {% for news in core_news %}
+                <li class="news-item">
+                    <span class="news-tag">{{ news.tag }}</span>
+                    <span class="news-text">{{ news.summary }}</span>
+                </li>
+                {% endfor %}
+            </ol>
+            {% else %}
+            <p class="no-data">正在分析新闻数据...</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- 今日重点关注领域 -->
+    <section class="card full-width">
+        <h3 class="card-title">
+            <span class="icon">🔍</span>
+            今日重点关注领域
+        </h3>
+        <div class="card-content">
+            {% if focus_areas %}
+            <div class="focus-areas">
+                {% for area in focus_areas %}
+                <div class="focus-item">
+                    <h4 class="focus-title">{{ area.sector }}</h4>
+                    <p class="focus-reason">{{ area.reason }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="no-data">正在分析重点关注领域...</p>
+            {% endif %}
+        </div>
+    </section>
+</div>
+{% endblock %}

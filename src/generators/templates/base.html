@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}美股财经日报{% endblock %}</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+
+{# 股票代码带 Tooltip 的宏 #}
+{% macro stock_with_tooltip(symbol, stock_info) %}
+{% set info = stock_info.get(symbol, {}) if stock_info else {} %}
+<span class="stock-symbol">
+    {{ symbol }}
+    {% if info and info.get('name') %}
+    <span class="stock-tooltip">
+        <div class="tooltip-header">{{ info.get('name', symbol) }}</div>
+        {% if info.get('current_price') %}
+        <div class="tooltip-price">${{ "%.2f"|format(info.current_price) }}</div>
+        {% endif %}
+        {% if info.get('change_pct') is not none %}
+        <div class="tooltip-change {{ 'positive' if info.change_pct >= 0 else 'negative' }}">
+            {{ "+%.2f"|format(info.change) if info.change >= 0 else "%.2f"|format(info.change) }} ({{ "+%.2f%%"|format(info.change_pct) if info.change_pct >= 0 else "%.2f%%"|format(info.change_pct) }})
+        </div>
+        {% endif %}
+        <div class="tooltip-row">
+            <span class="tooltip-label" data-i18n="volume">成交量</span>
+            <span class="tooltip-value">{{ info.get('volume_formatted', '-') }}</span>
+        </div>
+        <div class="tooltip-row">
+            <span class="tooltip-label" data-i18n="marketCap">市值</span>
+            <span class="tooltip-value">{{ info.get('market_cap_formatted', '-') }}</span>
+        </div>
+        <div class="tooltip-row">
+            <span class="tooltip-label" data-i18n="dayRange">日内区间</span>
+            <span class="tooltip-value">${{ "%.2f"|format(info.day_low) if info.day_low else '-' }} - ${{ "%.2f"|format(info.day_high) if info.day_high else '-' }}</span>
+        </div>
+        {% if info.get('sector') %}
+        <div class="tooltip-row">
+            <span class="tooltip-label" data-i18n="sector">板块</span>
+            <span class="tooltip-value">{{ info.sector }}</span>
+        </div>
+        {% endif %}
+    </span>
+    {% endif %}
+</span>
+{% endmacro %}
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo" data-i18n="siteTitle">美股财经日报</a>
+            <div class="header-right">
+                <nav class="nav">
+                    <a href="/" data-i18n="latestReport">最新报告</a>
+                    <a href="/reports" data-i18n="historyReports">历史报告</a>
+                </nav>
+                <div class="lang-toggle" onclick="toggleLanguage()">
+                    <span class="lang-option" data-lang="zh">中</span>
+                    <span class="lang-option" data-lang="en">EN</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p data-i18n="dataSource">数据来源：Yahoo Finance, Finnhub, Investing.com</p>
+            {% if update_time %}
+            <p class="update-time"><span data-i18n="updateTime">更新时间</span>：{{ update_time }}</p>
+            {% endif %}
+        </div>
+    </footer>
+
+<script>
+// 翻译配置
+const translations = {
+    zh: {
+        siteTitle: '美股财经日报',
+        latestReport: '最新报告',
+        historyReports: '历史报告',
+        dataSource: '数据来源：Yahoo Finance, Finnhub, Investing.com',
+        updateTime: '更新时间',
+        dailyReport: '美股财经日报',
+        premarketSummary: '盘前市场汇总',
+        optionsDaily: '期权市场日报',
+        todayCalendar: '今日财经日历',
+        todayEarnings: '今日重点财报',
+        ratingChanges: '投行目标价调整',
+        coreNews: '核心新闻',
+        focusAreas: '今日重点关注领域',
+        marketOverview: '市场概览',
+        indexCallPut: '指数期权 Call/Put 占比',
+        indexTop5: '指数期权成交量 TOP 5',
+        stockTop25: '个股期权成交量 TOP 25',
+        timeET: '时间(ET)',
+        event: '事件',
+        estimate: '预期',
+        previous: '前值',
+        beforeMarket: '盘前发布',
+        afterMarket: '盘后发布',
+        stock: '股票',
+        bank: '投行',
+        ratingChange: '评级变化',
+        targetPrice: '目标价',
+        upside: '潜在涨幅',
+        noCalendarData: '今日无重要经济数据发布',
+        noEarningsData: '今日无重点财报发布',
+        noRatingData: '今日无评级变化',
+        upgrade: '上调',
+        downgrade: '下调',
+        reiterate: '重申',
+        maintain: '维持',
+        initiate: '首予评级',
+        noCoreNews: '暂无核心新闻',
+        noFocusAreas: '暂无重点关注领域',
+        totalVolume: '全市场成交量',
+        callVolume: '看涨期权成交',
+        putVolume: '看跌期权成交',
+        pcRatio: 'P/C比',
+        sentiment: '市场情绪',
+        index: '指数',
+        total: '总成交',
+        rank: '#',
+        hottestOption: '最热期权',
+        volume: '成交量',
+        marketCap: '市值',
+        dayRange: '日内区间',
+        sector: '板块',
+        fearIndex: '恐慌指数 VIX',
+        vixHigh: '极度恐慌',
+        vixMedium: '恐慌',
+        vixLow: '平静'
+    },
+    en: {
+        siteTitle: 'US Stock Daily',
+        latestReport: 'Latest',
+        historyReports: 'History',
+        dataSource: 'Data: Yahoo Finance, Finnhub, Investing.com',
+        updateTime: 'Updated',
+        dailyReport: 'US Stock Daily',
+        premarketSummary: 'Pre-Market Summary',
+        optionsDaily: 'Options Daily',
+        todayCalendar: 'Economic Calendar',
+        todayEarnings: 'Earnings Today',
+        ratingChanges: 'Rating Changes',
+        coreNews: 'Key News',
+        focusAreas: 'Focus Areas',
+        marketOverview: 'Market Overview',
+        indexCallPut: 'Index Options Call/Put Ratio',
+        indexTop5: 'Index Options Volume TOP 5',
+        stockTop25: 'Stock Options Volume TOP 25',
+        timeET: 'Time(ET)',
+        event: 'Event',
+        estimate: 'Est.',
+        previous: 'Prev.',
+        beforeMarket: 'Before Market',
+        afterMarket: 'After Market',
+        stock: 'Stock',
+        bank: 'Firm',
+        ratingChange: 'Rating',
+        targetPrice: 'Target',
+        upside: 'Upside',
+        noCalendarData: 'No economic data today',
+        noEarningsData: 'No earnings today',
+        noRatingData: 'No rating changes',
+        upgrade: 'Upgrade',
+        downgrade: 'Downgrade',
+        reiterate: 'Reiterate',
+        maintain: 'Maintain',
+        initiate: 'Initiate',
+        noCoreNews: 'No key news',
+        noFocusAreas: 'No focus areas',
+        totalVolume: 'Total Volume',
+        callVolume: 'Call Volume',
+        putVolume: 'Put Volume',
+        pcRatio: 'P/C',
+        sentiment: 'Sentiment',
+        index: 'Index',
+        total: 'Total',
+        rank: '#',
+        hottestOption: 'Hottest',
+        volume: 'Volume',
+        marketCap: 'Mkt Cap',
+        dayRange: 'Day Range',
+        sector: 'Sector',
+        fearIndex: 'Fear Index VIX',
+        vixHigh: 'Extreme Fear',
+        vixMedium: 'Fear',
+        vixLow: 'Calm'
+    }
+};
+
+// 获取当前语言
+function getCurrentLang() {
+    return localStorage.getItem('lang') || 'zh';
+}
+
+// 切换语言
+function toggleLanguage() {
+    const currentLang = getCurrentLang();
+    const newLang = currentLang === 'zh' ? 'en' : 'zh';
+    localStorage.setItem('lang', newLang);
+    applyLanguage(newLang);
+}
+
+// 应用语言
+function applyLanguage(lang) {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang][key]) {
+            el.textContent = translations[lang][key];
+        }
+    });
+
+    // 切换双语内容 (data-zh / data-en)
+    document.querySelectorAll('[data-zh][data-en]').forEach(el => {
+        const text = el.getAttribute(lang === 'zh' ? 'data-zh' : 'data-en');
+        if (text) {
+            el.textContent = text;
+        }
+    });
+
+    // 更新语言切换按钮状态
+    document.querySelectorAll('.lang-option').forEach(opt => {
+        opt.classList.toggle('active', opt.getAttribute('data-lang') === lang);
+    });
+
+    // 更新 html lang 属性
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+}
+
+// 页面加载时应用保存的语言
+document.addEventListener('DOMContentLoaded', () => {
+    applyLanguage(getCurrentLang());
+});
+</script>
+</body>
+</html>

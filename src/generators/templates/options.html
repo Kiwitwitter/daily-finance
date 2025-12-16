@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}期权市场日报 - {{ date }}{% endblock %}
+
+{% block content %}
+<div class="report-header">
+    <h2>期权市场日报</h2>
+    <div class="report-date">{{ date }}</div>
+</div>
+
+<div class="report-grid">
+    <!-- 市场概览 -->
+    <section class="card">
+        <h3 class="card-title">
+            <span class="icon">📈</span>
+            市场概览
+        </h3>
+        <div class="card-content">
+            <div class="market-overview">
+                <div class="stat-item">
+                    <span class="stat-label">全市场成交量</span>
+                    <span class="stat-value">{{ "{:,}".format(market_overview.total_volume) }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">看涨期权成交</span>
+                    <span class="stat-value call">{{ "{:,}".format(market_overview.total_call_volume) }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">看跌期权成交</span>
+                    <span class="stat-value put">{{ "{:,}".format(market_overview.total_put_volume) }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">P/C 比率</span>
+                    <span class="stat-value">{{ market_overview.pc_ratio }}</span>
+                </div>
+                <div class="stat-item highlight">
+                    <span class="stat-label">市场情绪</span>
+                    <span class="stat-value sentiment {{ market_overview.sentiment_class }}">{{ market_overview.sentiment }}</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 指数期权看涨看跌占比 -->
+    <section class="card">
+        <h3 class="card-title">
+            <span class="icon">📊</span>
+            指数期权 Call/Put 占比
+        </h3>
+        <div class="card-content">
+            {% for idx in index_options %}
+            <div class="cp-bar-container">
+                <span class="cp-symbol">{{ idx.symbol }}</span>
+                <div class="cp-bar">
+                    <div class="cp-call" style="width: {{ idx.call_pct }}%">
+                        <span>{{ idx.call_pct }}%</span>
+                    </div>
+                    <div class="cp-put" style="width: {{ idx.put_pct }}%">
+                        <span>{{ idx.put_pct }}%</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            <div class="cp-legend">
+                <span class="legend-call">■ Call</span>
+                <span class="legend-put">■ Put</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- 指数期权成交量 TOP 5 -->
+    <section class="card">
+        <h3 class="card-title">
+            <span class="icon">🏆</span>
+            指数期权成交量 TOP 5
+        </h3>
+        <div class="card-content">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>指数</th>
+                        <th>总成交</th>
+                        <th>Call</th>
+                        <th>Put</th>
+                        <th>C/P比</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for idx in index_options[:5] %}
+                    <tr>
+                        <td class="symbol">{{ idx.symbol }}</td>
+                        <td>{{ "{:,}".format(idx.total_volume) }}</td>
+                        <td class="call">{{ "{:,}".format(idx.call_volume) }}</td>
+                        <td class="put">{{ "{:,}".format(idx.put_volume) }}</td>
+                        <td>{{ idx.cp_ratio }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 个股期权成交量 TOP 25 -->
+    <section class="card full-width">
+        <h3 class="card-title">
+            <span class="icon">🔥</span>
+            个股期权成交量 TOP 25
+        </h3>
+        <div class="card-content">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>股票</th>
+                        <th>总成交</th>
+                        <th>Call</th>
+                        <th>Put</th>
+                        <th>C/P比</th>
+                        <th>最热期权</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in top_25_stocks %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td class="symbol">{{ stock.symbol }}</td>
+                        <td>{{ "{:,}".format(stock.total_volume) }}</td>
+                        <td class="call">{{ "{:,}".format(stock.call_volume) }}</td>
+                        <td class="put">{{ "{:,}".format(stock.put_volume) }}</td>
+                        <td>{{ stock.cp_ratio }}</td>
+                        <td class="hottest">{{ stock.hottest_option }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 期权市场分析 -->
+    {% if analysis %}
+    <section class="card full-width">
+        <h3 class="card-title">
+            <span class="icon">🤖</span>
+            智能分析
+        </h3>
+        <div class="card-content">
+            <div class="analysis-content">
+                {{ analysis | safe }}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

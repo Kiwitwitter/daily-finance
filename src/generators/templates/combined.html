@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+
+{% block title %}美股财经日报 - {{ date }}{% endblock %}
+
+{% block content %}
+<div class="report-header">
+    <h2 data-i18n="dailyReport">美股财经日报</h2>
+    <div class="report-date">{{ date }}</div>
+</div>
+
+<!-- Tab 导航 -->
+<div class="tab-nav">
+    <button class="tab-btn active" data-tab="premarket">
+        <span data-i18n="premarketSummary">盘前市场汇总</span>
+        <span class="update-badge">{{ premarket_update_time }}</span>
+    </button>
+    <button class="tab-btn" data-tab="options">
+        <span data-i18n="optionsDaily">期权市场日报</span>
+        <span class="update-badge">{{ options_update_time }}</span>
+    </button>
+</div>
+
+<!-- 盘前市场汇总 Tab -->
+<div class="tab-content active" id="premarket">
+    <!-- 三大指数行情 -->
+    <div class="indices-widget">
+        {% set indices = [
+            {'symbol': 'SPY', 'name': 'S&P 500'},
+            {'symbol': 'QQQ', 'name': 'Nasdaq 100'},
+            {'symbol': 'DIA', 'name': 'Dow Jones'}
+        ] %}
+        {% for idx in indices %}
+        {% set info = stock_info.get(idx.symbol, {}) %}
+        <div class="index-card">
+            <div class="index-name">{{ idx.name }}</div>
+            <div class="index-price">${{ "%.2f"|format(info.current_price or 0) }}</div>
+            <div class="index-change {% if (info.change_pct or 0) >= 0 %}positive{% else %}negative{% endif %}">
+                {% if (info.change or 0) >= 0 %}+{% endif %}{{ "%.2f"|format(info.change or 0) }}
+                ({% if (info.change_pct or 0) >= 0 %}+{% endif %}{{ "%.2f"|format(info.change_pct or 0) }}%)
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="report-grid">
+        <!-- 财经日历 -->
+        <section class="card">
+            <h3 class="card-title">
+                <span class="icon">📅</span>
+                <span data-i18n="todayCalendar">今日财经日历</span>
+            </h3>
+            <div class="card-content">
+                {% if calendar_events %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th data-i18n="timeET">时间(ET)</th>
+                            <th data-i18n="event">事件</th>
+                            <th data-i18n="estimate">预期</th>
+                            <th data-i18n="previous">前值</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in calendar_events %}
+                        <tr>
+                            <td class="time">{{ event.time }}</td>
+                            <td>{{ event.event }}</td>
+                            <td>{{ event.estimate or '-' }}</td>
+                            <td>{{ event.prev or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="no-data" data-i18n="noCalendarData">今日无重要经济数据发布</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- 今日重点财报 -->
+        <section class="card">
+            <h3 class="card-title">
+                <span class="icon">📊</span>
+                <span data-i18n="todayEarnings">今日重点财报</span>
+            </h3>
+            <div class="card-content">
+                {% if earnings %}
+                <div class="earnings-section">
+                    {% if earnings.before_market %}
+                    <div class="earnings-group">
+                        <h4 data-i18n="beforeMarket">盘前发布</h4>
+                        <div class="earnings-list">
+                            {% for e in earnings.before_market %}
+                            <span class="earnings-tag">{{ stock_with_tooltip(e.symbol, stock_info) }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if earnings.after_market %}
+                    <div class="earnings-group">
+                        <h4 data-i18n="afterMarket">盘后发布</h4>
+                        <div class="earnings-list">
+                            {% for e in earnings.after_market %}
+                            <span class="earnings-tag">{{ stock_with_tooltip(e.symbol, stock_info) }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="no-data" data-i18n="noEarningsData">今日无重点财报发布</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- 投行评级变化 -->
+        <section class="card full-width">
+            <h3 class="card-title">
+                <span class="icon">🏦</span>
+                <span data-i18n="ratingChanges">投行目标价调整</span>
+            </h3>
+            <div class="card-content">
+                {% if rating_changes %}
+                <table class="data-table rating-table">
+                    <thead>
+                        <tr>
+                            <th data-i18n="stock">股票</th>
+                            <th data-i18n="bank">投行评级</th>
+                            <th data-i18n="targetPrice">目标价</th>
+                            <th data-i18n="upside">潜在涨幅</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rating in rating_changes %}
+                        <tr>
+                            <td class="rating-symbol">{{ stock_with_tooltip(rating.symbol, stock_info) }}</td>
+                            <td class="rating-firms">
+                                {% for firm in rating.firms %}
+                                <div class="firm-row {% if firm.action == 'up' %}row-bullish{% elif firm.action == 'down' %}row-bearish{% elif firm.action == 'reit' %}row-reit{% elif firm.action == 'main' %}row-maintain{% elif firm.action == 'init' %}row-init{% endif %}">
+                                    <span class="firm-name">{{ firm.company }}</span>
+                                    <span class="firm-grade">
+                                        {% if firm.to_grade and firm.from_grade %}
+                                            {% if firm.action == 'up' %}
+                                            <span class="upgrade">{{ firm.from_grade }} → {{ firm.to_grade }}</span>
+                                            {% elif firm.action == 'down' %}
+                                            <span class="downgrade">{{ firm.from_grade }} → {{ firm.to_grade }}</span>
+                                            {% else %}
+                                            {{ firm.from_grade }} → {{ firm.to_grade }}
+                                            {% endif %}
+                                        {% else %}
+                                            {{ firm.to_grade or '-' }}
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                {% if rating.target_mean %}
+                                ${{ "%.2f"|format(rating.target_mean) }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if rating.upside_pct %}
+                                    {% if rating.upside_pct > 0 %}
+                                    <span class="upgrade">+{{ "%.1f"|format(rating.upside_pct) }}%</span>
+                                    {% else %}
+                                    <span class="downgrade">{{ "%.1f"|format(rating.upside_pct) }}%</span>
+                                    {% endif %}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="rating-legend">
+                    <span class="legend-item"><span class="legend-color bullish"></span><span data-i18n="upgrade">上调</span></span>
+                    <span class="legend-item"><span class="legend-color bearish"></span><span data-i18n="downgrade">下调</span></span>
+                    <span class="legend-item"><span class="legend-color reit"></span><span data-i18n="reiterate">重申</span></span>
+                    <span class="legend-item"><span class="legend-color maintain"></span><span data-i18n="maintain">维持</span></span>
+                    <span class="legend-item"><span class="legend-color init"></span><span data-i18n="initiate">首予评级</span></span>
+                </div>
+                {% else %}
+                <p class="no-data" data-i18n="noRatingData">今日无评级变化</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- 核心新闻 -->
+        <section class="card">
+            <h3 class="card-title">
+                <span class="icon">📰</span>
+                <span data-i18n="coreNews">核心新闻</span>
+            </h3>
+            <div class="card-content">
+                {% if core_news %}
+                <ul class="news-list">
+                    {% for news in core_news %}
+                    <li class="news-item">
+                        <span class="news-tag" data-zh="{{ news.tag }}" data-en="{{ news.tag_en or news.tag }}">{{ news.tag }}</span>
+                        <span class="news-text" data-zh="{{ news.summary }}" data-en="{{ news.summary_en or news.summary }}">{{ news.summary }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="no-data" data-i18n="noCoreNews">暂无核心新闻</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- 重点关注领域 -->
+        <section class="card">
+            <h3 class="card-title">
+                <span class="icon">🎯</span>
+                <span data-i18n="focusAreas">今日重点关注领域</span>
+            </h3>
+            <div class="card-content">
+                {% if focus_areas %}
+                <div class="focus-areas">
+                    {% for area in focus_areas %}
+                    <div class="focus-item">
+                        <div class="focus-title" data-zh="{{ area.title }}" data-en="{{ area.title_en or area.title }}">{{ area.title }}</div>
+                        <div class="focus-reason" data-zh="{{ area.reason }}" data-en="{{ area.reason_en or area.reason }}">{{ area.reason }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="no-data" data-i18n="noFocusAreas">暂无重点关注领域</p>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- 期权市场日报 Tab -->
+<div class="tab-content" id="options">
+    <div class="report-grid">
+        <!-- 市场概览 -->
+        <section class="card">
+            <h3 class="card-title">
+                <span class="icon">📈</span>
+                <span data-i18n="marketOverview">市场概览</span>
+            </h3>
+            <div class="card-content">
+                <div class="market-overview">
+                    <div class="stat-item">
+                        <span class="stat-label" data-i18n="totalVolume">全市场成交量</span>
+                        <span class="stat-value">{{ "{:,}".format(market_overview.total_volume or 0) }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label" data-i18n="callVolume">看涨期权成交</span>
+                        <span class="stat-value call">{{ "{:,}".format(market_overview.total_call_volume or 0) }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label" data-i18n="putVolume">看跌期权成交</span>
+                        <span class="stat-value put">{{ "{:,}".format(market_overview.total_put_volume or 0) }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label" data-i18n="pcRatio">P/C 比率</span>
+                        <span class="stat-value">{{ market_overview.pc_ratio or '-' }}</span>
+                    </div>
+                    <div class="stat-item highlight">
+                        <span class="stat-label" data-i18n="sentiment">市场情绪</span>
+                        {% set sentiment_en_map = {'极度看涨': 'Extremely Bullish', '看涨': 'Bullish', '中性': 'Neutral', '看跌': 'Bearish', '极度看跌': 'Extremely Bearish'} %}
+                        <span class="stat-value sentiment {{ market_overview.sentiment_class or '' }}" data-zh="{{ market_overview.sentiment or '-' }}" data-en="{{ sentiment_en_map.get(market_overview.sentiment, market_overview.sentiment) or '-' }}">{{ market_overview.sentiment or '-' }}</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 指数期权看涨看跌占比 -->
+        <section class="card">
+            <h3 class="card-title">
+                <span class="icon">📊</span>
+                <span data-i18n="indexCallPut">指数期权 Call/Put 占比</span>
+            </h3>
+            <div class="card-content">
+                {% for idx in index_options %}
+                <div class="cp-bar-container">
+                    <span class="cp-symbol">{{ stock_with_tooltip(idx.symbol, stock_info) }}</span>
+                    <div class="cp-bar">
+                        <div class="cp-call" style="width: {{ idx.call_pct }}%">
+                            <span>{{ idx.call_pct }}%</span>
+                        </div>
+                        <div class="cp-put" style="width: {{ idx.put_pct }}%">
+                            <span>{{ idx.put_pct }}%</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="cp-legend">
+                    <span class="legend-call">■ Call</span>
+                    <span class="legend-put">■ Put</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 指数期权成交量 TOP 5 -->
+        <section class="card">
+            <h3 class="card-title">
+                <span class="icon">🏆</span>
+                <span data-i18n="indexTop5">指数期权成交量 TOP 5</span>
+            </h3>
+            <div class="card-content">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th data-i18n="index">指数</th>
+                            <th data-i18n="total">总成交</th>
+                            <th>Call</th>
+                            <th>Put</th>
+                            <th data-i18n="pcRatio">P/C比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for idx in index_options %}
+                        <tr class="{% if idx.pc_ratio > 1 %}row-bearish{% elif idx.pc_ratio < 1 %}row-bullish{% endif %}">
+                            <td>{{ stock_with_tooltip(idx.symbol, stock_info) }}</td>
+                            <td>{{ "{:,}".format(idx.total_volume) }}</td>
+                            <td class="call">{{ "{:,}".format(idx.call_volume) }}</td>
+                            <td class="put">{{ "{:,}".format(idx.put_volume) }}</td>
+                            <td>{{ idx.pc_ratio }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- VIX 恐慌指数 -->
+        <section class="card">
+            <h3 class="card-title">
+                <span class="icon">😱</span>
+                <span data-i18n="fearIndex">恐慌指数 VIX</span>
+            </h3>
+            <div class="card-content">
+                {% set vix = stock_info.get('^VIX', {}) %}
+                <div class="vix-widget">
+                    <div class="vix-value {% if (vix.current_price or 0) >= 30 %}vix-high{% elif (vix.current_price or 0) >= 20 %}vix-medium{% else %}vix-low{% endif %}">
+                        {{ "%.2f"|format(vix.current_price or 0) }}
+                    </div>
+                    <div class="vix-change {% if (vix.change or 0) >= 0 %}positive{% else %}negative{% endif %}">
+                        {% if (vix.change or 0) >= 0 %}+{% endif %}{{ "%.2f"|format(vix.change or 0) }}
+                        ({% if (vix.change_pct or 0) >= 0 %}+{% endif %}{{ "%.2f"|format(vix.change_pct or 0) }}%)
+                    </div>
+                    <div class="vix-status">
+                        {% if (vix.current_price or 0) >= 30 %}
+                        <span class="status-high" data-i18n="vixHigh">极度恐慌</span>
+                        {% elif (vix.current_price or 0) >= 20 %}
+                        <span class="status-medium" data-i18n="vixMedium">恐慌</span>
+                        {% else %}
+                        <span class="status-low" data-i18n="vixLow">平静</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 个股期权成交量 TOP 25 -->
+        <section class="card full-width">
+            <h3 class="card-title">
+                <span class="icon">🔥</span>
+                <span data-i18n="stockTop25">个股期权成交量 TOP 25</span>
+            </h3>
+            <div class="card-content">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th data-i18n="rank">#</th>
+                            <th data-i18n="stock">股票</th>
+                            <th data-i18n="total">总成交</th>
+                            <th>Call</th>
+                            <th>Put</th>
+                            <th data-i18n="pcRatio">P/C比</th>
+                            <th data-i18n="hottestOption">最热期权</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stock in top_25_stocks %}
+                        <tr class="{% if stock.pc_ratio > 1 %}row-bearish{% elif stock.pc_ratio < 1 %}row-bullish{% endif %}">
+                            <td>{{ loop.index }}</td>
+                            <td>{{ stock_with_tooltip(stock.symbol, stock_info) }}</td>
+                            <td>{{ "{:,}".format(stock.total_volume) }}</td>
+                            <td class="call">{{ "{:,}".format(stock.call_volume) }}</td>
+                            <td class="put">{{ "{:,}".format(stock.put_volume) }}</td>
+                            <td>{{ stock.pc_ratio }}</td>
+                            <td class="hottest">{{ stock.hottest_option }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+// Tab 切换逻辑
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        // 移除所有 active 状态
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+        // 添加当前 active 状态
+        btn.classList.add('active');
+        const tabId = btn.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
+
+        // 保存到 localStorage
+        localStorage.setItem('activeTab', tabId);
+    });
+});
+
+// 恢复上次选中的 tab
+const savedTab = localStorage.getItem('activeTab');
+if (savedTab) {
+    const btn = document.querySelector(`.tab-btn[data-tab="${savedTab}"]`);
+    if (btn) btn.click();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+ENV/
+.eggs/
+*.egg-info/
+*.egg
+
+# Environment (敏感信息)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 数据文件 (运行时生成)
+data/*.json
+
+# 输出文件 (运行时生成)
+output/
+
+# 日志
+logs/
+*.log
+
+# Docker
+.docker/
+
+# Claude Code 本地设置
+.claude/
