@@ -1,3 +1,4 @@
 # 美东时间早上5点运行每日任务
 # 注意：容器时区设置为 America/New_York
+PATH=/usr/local/bin:/usr/bin:/bin
 0 5 * * * cd /app && python scripts/daily_job.py >> /app/logs/cron.log 2>&1
