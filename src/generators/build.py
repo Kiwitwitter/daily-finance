@@ -197,11 +197,17 @@ def build_options_report(analysis_data: dict = None) -> str:
 
 
 def get_file_update_time(filename: str) -> str:
-    """获取数据文件的更新时间（EDT时区格式）"""
+    """获取数据文件的更新时间（美东时区格式）"""
     filepath = DATA_DIR / filename
     if filepath.exists():
         mtime = filepath.stat().st_mtime
-        return datetime.fromtimestamp(mtime).strftime('%Y/%m/%d %H:%M EDT')
+        dt = datetime.fromtimestamp(mtime)
+        # 判断是否处于夏令时（简化判断：3月第二个周日到11月第一个周日）
+        # 使用 time 模块的 localtime 来检测夏令时
+        import time
+        is_dst = time.localtime(mtime).tm_isdst > 0
+        tz_name = 'EDT' if is_dst else 'EST'
+        return dt.strftime(f'%Y/%m/%d %H:%M {tz_name}')
     return '--'
 
 
